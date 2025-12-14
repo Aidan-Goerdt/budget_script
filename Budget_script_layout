@@ -1,0 +1,809 @@
+Budget Script
+-------------
+Goal: I want to automate my budgeting so that I can keep track of expenses, income, and truly identify changes that are required.
+
+Process: My idea right now is that I will download statements from Chase, Discover, and Vibrant. I'll need to have the data cleaned and matched so that we don't have any repeat charges. Lets actually have matching amounts be presented to the user in a popup for them to select a. Keep both, b. Keep selected (omit unselected). After all the amounts are collected, lets present a simple data set of : Total Income, Total Spending, Income Spent [%], Lets also just use Chase's catagories for organization, I'll paste them but then lets also have me paste a sample of Discover's catagories so that we can conver them in the program as well that way they're consistent. I'll want to present all of theses catagories at the end and assign desired values based on percentage breakdowns for the budget. And have the option to adjust them if needed.
+
+PSUEDO-CODE
+(PYTHON)
+Have a gui pop up for the user to upload a DISCOVER File, a CHASE File (both YTD Statements, and VIBRANT file statement (CSV files).
+
+For the DISCOVER file, apply the conversion of categories in cells E2:E999, put cash back used in it's own section, omit payments and credits (not useful, its just a summation)
+
+Chase Catagories:
+Transaction Date A2:A999
+Description C2:C999
+Category D2:D999
+Type E2:E999 --> Omit Payment, only include Sale Or match with Vibrant
+Amount F2:F999 (Negative notation is correct)
+Health & Wellness
+Food & Drink
+Gas
+Travel
+Shopping
+Groceries
+Professional Services
+Gifts and Donations --> Health & Wellness for YMCA
+Personal --> Professional Services for College Transcript
+Entertainment
+Bills & Utilities --> Entertainment for Sling
+
+Discover Catagories: 
+Transaction Date A2:A999
+Description C2:C999
+Amount D2:D999 (FLIP Negative notation to match Chase)
+Category E2:E999
+(Convert to Chase Catagories)
+Merchandise --> Shopping (WALMART IS GROCERIES)
+Restaurants --> Food & Drink
+Supermarkets --> Groceries
+Medical Services --> Health & Wellness
+Gasoline --> Gas
+Education --> Professional Services
+Omit Payments and Credits (Cashback)
+Payments & Credits --> Payemnts (Match with Vibrant deductions OR REUFNDS for pervious purchases?)
+Travel/ Entertainment --> Travel
+Automotive --> Shopping
+Services --> Professional Services
+
+Vibrant
+Transaction Date B2:B999
+Amount E2:E999 (Positives are payments/income, negatives should be matched with credit card payments)
+Description H2:H999 (Payments deducted for Dominion Energy can be characterized with electricity utilities, rent is 2334 deducted from GATES (aka Gates Hudson), income is primarily from American Contracting).
+
+So Basically we'll collect all of this information and present the following to the user:
+
+TOTAL INCOME
+TOTAL SPENDING
+TOTAL LEFTOVER
+
+MONTHLY INCOME
+MONTHLY SAVINGS
+MONTHLY LEFTOVER
+(Split these and show ALL months in a GUI tab)
+
+Show a colored pie chart with each catagory of spending for both the TOTAL and MONTHLY.
+
+AVG MONTHLY INCOME
+AVG MONTHLY SPENDING
+
+Take the AVG MONTHLY INCOME and split into each catagories with your reccomended Percentages (given therapy spending and high rent). Optimize so that the end user can get a reccomended amount of Food and Drink Spending primarily. This will create an MONTHLY *Category* BUDGET for each respective category.
+
+Finally, I want a CURRENT MONTH tab or visual so that the user can see current month's utilization as a percentage, pie chart, and most importantly a dollar amount left to spend in each category. I mostly want Food & Drink foremost since that will be easiest for the user to adjust on the fly each month.
+
+
+FIRST RESPONSE:
+Great! I really like this comprehensive budgeting approach. I have several clarifying questions to make sure I get this exactly right:
+
+## File Format & Data Questions:
+
+1. **Date Range**: When you say "YTD Statements" - should the script handle any date range, or do you want to specify a particular year? Should it auto-detect the date range from the files?
+
+2. **Vibrant Income Detection**: You mentioned income is "primarily from American Contracting" - should I look for that specific string in the description, or are there other income sources I should watch for? Should I assume all positive amounts in Vibrant are income unless they match a credit card payment?
+
+3. **Matching Logic**: For the duplicate detection popup:
+   - Should I match transactions within a certain date window (e.g., +/- 3 days)?
+   - Match on exact amount only, or also consider description similarity?
+   - What about the Vibrant-to-Credit-Card payment matching - same logic?
+
+## Category & Budget Questions:
+
+4. **Specific Conversions**: 
+   - You mentioned "WALMART IS GROCERIES" for Discover - should I detect "Walmart" in the description and override the category?
+   - For Chase: "YMCA" → Health & Wellness, "College Transcript" → Professional Services, "Sling" → Entertainment. Should I detect these by description keywords?
+
+5. **Therapy Spending**: You mentioned "therapy spending" for budget optimization - should this be its own category, or does it fall under "Health & Wellness"? Do you want to flag or track it separately?
+
+6. **Rent Amount**: You mentioned rent is $2,334 from "GATES" - should this be auto-categorized as "Bills & Utilities" or have its own "Housing" category?
+
+## Budget Optimization:
+
+7. **Budget Percentages**: You want recommended percentages optimized for your situation. Can you give me:
+   - Approximate monthly income?
+   - Monthly rent ($2,334)?
+   - Approximate therapy costs per month?
+   - Any other fixed costs I should know about?
+   
+   Or should I calculate these from the historical data and then optimize?
+
+8. **Food & Drink Priority**: Should the budget recommendations prioritize having a reasonable Food & Drink budget even if it means reducing other discretionary categories?
+
+## Technical Questions:
+
+9. **GUI Framework**: Any preference? I'm thinking **tkinter** (built-in) for simplicity, but could use PyQt5 for a more modern look.
+
+10. **Current Month**: For the "CURRENT MONTH" view - should this filter to only transactions from the current calendar month when you run the script?
+
+Let me know your thoughts on these, and I'll build exactly what you need!
+
+
+SECOND PROMPT:
+1. The YTD Statements, The script will Just take all the items from start to finish - I'll reupload entire YTD Statements each time I want the script's results updated.
+2. The string for income from american contracting is "AMERICAN CONTRAC 1019275906        55 - PAYROLL" and that will be the same each time.  There will be other income transactions from refunds or venmo, lets just put TOTAL INCOME as everything that comes IN. regardless of income itself.
+3. Match EXACT transactions between and within all sheets, and ideally I would like this to have a popup for me to manually verify the descriptions of the matching cases. Have the user verify these as THE SAME, SEPERATE transactions in that pop-up window you know?
+4. That's correct! Discover seems to classify "WALMART STORE 00749 AMES IA" or any other walmart stores as shopping/merchandise, but I want it as Groceries everytime. I only get food at Walmart really.
+   1. Yes, for the chase changes, change those by keywords. The descriptions are: "YMCA OF GREATER RICHMOND" "SLING.COM" and "COLLEGE TRANSCRIPT"
+   2. 
+ 5. Leave therapy spending under "Health & Wellness"
+1. Leave the rent from GATES under Bills & Utilities.
+2. I was hoping that you could create and store AVG monthly income, rent, therapy costs, and just average spending in each catagory for the preceding months besdies the current one, and then use those average values as the current budget amount, reducing the more flexible costs to fit the income, such as groceries and food & drink being reduced to fit. However, monthy rent is around 2334, electricity (from vibrant satement) is about 60, avg income is around ~5,000, therapy is around 1700 ish.
+3. Food & Drink should be the first to be REDUCED, therapy, rent, gas, etc are all somewhat fixed. I just want to know when we should and shouldn't go out to eat or do something mainly.
+4. No GUI preference, use what works.
+5. Yes each month should only include the transaction dates from that month, including the current month.
+
+PLEASE ask any more questions you can guess might throw things off going forward. note that this might be ugly first time around since my spending is pretty unhinged right now. rent and therapy eat up a lot of my income so we may be in the red most months. Show that if its the case. Thanks
+
+SECOND RESPONSE (CHATGPT):
+
+This is a *really* solid spec already. I’m glad you want to slow down and get the edge cases right before writing code — that’s exactly what will make this usable long-term rather than a one-off script.
+
+Below are the **remaining clarifying questions / design decisions** that could meaningfully affect correctness or user experience. I’ll keep them concrete and practical.
+
+---
+
+## 1. Duplicate / Matching Logic (Very Important)
+
+You said **“match EXACT transactions”** and manually verify in a popup. I want to be precise about what *exact* means in code.
+
+### 1.1 What defines a candidate duplicate?
+
+Should two transactions be considered *potential duplicates* if:
+
+* Same **absolute amount** (e.g. −2334.00 vs −2334.00)
+* AND same **date**?
+* OR same amount within the **same month** regardless of date?
+* OR same amount **and** description similarity (string contains same merchant)?
+
+**Recommendation (but need your confirmation):**
+
+* Candidate duplicate = same absolute amount **AND** transaction dates within ±3 days
+* Then popup shows:
+
+  * Source (Chase / Discover / Vibrant)
+  * Date
+  * Description
+  * Category
+  * Amount
+    → You click **“Same Transaction”** or **“Separate Transactions”**
+
+Does that match your intent?
+
+---
+
+## 2. How Aggressive Should Duplicate Removal Be?
+
+Example:
+
+* Chase shows: `−$120.45`
+* Discover shows: `−$120.45`
+* Vibrant shows: `+$120.45` (payment)
+
+### Question:
+
+If you mark the Chase + Discover charges as **the same**, should:
+
+* One be deleted entirely?
+* Or one be retained as the “canonical” source (e.g., Chase wins)?
+
+**Recommendation:**
+
+* Keep **only one spending transaction**
+* Payments/income remain separate and are *not* deleted
+
+Confirm?
+
+---
+
+## 3. Credit Card Payments vs Spending (Accounting Philosophy)
+
+Right now, your system mixes:
+
+* **Spending** (card charges)
+* **Cash flow** (bank account payments)
+
+To avoid double-counting, we need a rule.
+
+### Question:
+
+For *TOTAL SPENDING*, do you want:
+
+* **Only card charges** (Chase + Discover)
+* OR card charges **plus** direct bank spending (rent, utilities)?
+
+And for *TOTAL INCOME*:
+
+* Only money entering Vibrant?
+* Or refunds on credit cards too?
+
+**Strong recommendation (cleanest):**
+
+* **Spending** = all *expenses* regardless of source
+  (card charges + direct withdrawals like rent & utilities)
+* **Income** = all positive Vibrant transactions + refunds
+
+I’ll implement that unless you object.
+
+---
+
+## 4. Refund Handling (Subtle but Important)
+
+If Discover or Chase shows a **refund** (positive amount):
+
+* Should it:
+
+  * Reduce spending in that category?
+  * Or count as income?
+
+Example:
+
+> Returned groceries → +$45
+
+**Recommendation:**
+
+* Refunds reduce spending in their original category
+* Still count as income in *cash flow* views
+
+Confirm?
+
+---
+
+## 5. Monthly Boundaries & Partial Months
+
+You want:
+
+* Monthly tabs
+* Current month utilization
+* Averages excluding current month
+
+### Question:
+
+If the first or last month in your YTD file is *partial*, should it:
+
+* Be included in averages?
+* Or excluded automatically?
+
+**Recommendation:**
+
+* Exclude partial months from averages
+  (only full calendar months count)
+
+---
+
+## 6. Category Stability (Important for Long-Term Use)
+
+Once categories are mapped and cleaned:
+
+### Question:
+
+Do you want the script to:
+
+* Re-ask you every run to confirm category mappings?
+* Or store mappings in a config file (JSON/YAML) and only ask if something new appears?
+
+**Strong recommendation:**
+
+* Store:
+
+  * Merchant keyword rules
+  * Discover → Chase category map
+  * Manual overrides
+* Ask only when **new unknown categories or merchants appear**
+
+This massively improves usability over time.
+
+---
+
+## 7. Manual Overrides for “Ugly” Months
+
+You mentioned spending is currently unhinged (fair).
+
+### Question:
+
+Do you want the ability to:
+
+* Manually mark a transaction as:
+
+  * “Ignore for budgeting”
+  * “One-time anomaly”
+* So it doesn’t distort averages?
+
+**Optional but powerful feature.**
+I can implement a checkbox in the verification popup.
+
+---
+
+## 8. Budget Optimization Rules (Confirming Logic)
+
+Here’s what I currently understand your desired logic to be:
+
+1. Compute **average monthly income** (excluding current month)
+2. Subtract **fixed costs**:
+
+   * Rent (~2334)
+   * Therapy (~1700)
+   * Utilities (~60)
+   * Gas (avg)
+3. Remaining money is distributed across:
+
+   * Groceries
+   * Food & Drink
+   * Entertainment
+   * Shopping
+4. **Food & Drink is reduced first** if income is insufficient
+5. If still negative → show **red deficit** clearly
+
+### Question:
+
+Should groceries be considered *semi-fixed* relative to Food & Drink?
+(i.e., eating out gets cut before groceries)
+
+If yes, I’ll protect groceries more aggressively.
+
+---
+
+## 9. Output Persistence
+
+### Question:
+
+Should the script:
+
+* Just display results each run
+* Or also save:
+
+  * Cleaned transactions
+  * Monthly summaries
+  * Budget targets
+    to disk (CSV / JSON)?
+
+**Recommendation:**
+
+* Save everything to a `/budget_data/` folder
+* Makes debugging and historical comparison easy
+
+---
+
+## 10. Final UX Question
+
+When you run the script, do you want:
+
+1. **Wizard-style flow**:
+
+   * Upload files → verify matches → see results
+2. Or **dashboard-first**, with verification as a side task?
+
+I’ll default to **wizard-style**, which fits your verification needs better.
+
+---
+
+## Summary Before I Code
+
+If you answer (even briefly) on:
+
+* Duplicate matching definition
+* Refund handling
+* Partial month treatment
+* Whether to persist configs & overrides
+* Groceries vs Food & Drink priority
+
+…I’ll then:
+
+* Lock the data model
+* Write clean, modular Python
+* Keep it ugly-but-honest for version 1
+* Make it easy to iterate later without rewriting everything
+
+You’re doing this the *right* way.
+
+
+
+THIRD PROMPT (CHAT GPT):
+1.1 JUST the transaction AMOUNT needs to be matched. Not the dates or anything. Otherwise that workflow looks good.
+2. Only compare two sheets at a time, so like chase and vibrant, discover and vibrant, and if necessary discover and chase but that shouldn't be the case whatsoever. and when we mark the same, have the user select which one to KEEP. 
+3. I want BOTH card changes and spending from the direct bank. thus is why I have the duplicate transaction clause, I want to capture some spending that happens directly from the bank AND the cards, but just manually remove cash flow that is redundant. And yeah for INCOME just use all positive vibrant transactions that's easiest.
+4. For these refunds just go ahead and treat them like income and it'll come out in the wash. better than having them double counted. I still spend that money, its fine.
+5. go ahead and exclude the most recent month if it's incomplete. don't add the most recent month to averages.
+6. Lets have category mappings be persistent, definitely store them. I like your recommendation to store all pertinent info.
+7. go ahead and implement this but don't prioritize it.
+8.  For this, I was originally thinking to just compute the average cost spending in each category and use those as averages, but perhaps your method allows for more balanced spending. Don't protect groceries, it can be changed too.
+9. Go ahead and save everything to the data folder and you can store it by each run too perhaps.
+10. I was thinking of wizard-stye first.
+
+THIRD RESPONSE (CHAT GPT):
+Final Interpreted Design (Based on Your Answers)
+1. Duplicate Matching (Authoritative)
+
+Match criterion:
+➜ Exact transaction AMOUNT only (no dates, no descriptions)
+
+Comparison scope:
+
+Chase ↔ Vibrant
+
+Discover ↔ Vibrant
+
+Discover ↔ Chase (allowed but expected to be rare)
+
+Workflow:
+
+For each matching amount between two sheets at a time:
+
+Popup shows both transactions
+
+User selects:
+
+KEEP Chase
+
+KEEP Discover
+
+KEEP Vibrant
+
+The unselected transaction is discarded
+
+No automatic deletions — user is always in control
+
+2. Accounting Philosophy (Clear & Clean)
+
+TOTAL SPENDING
+
+All negative transactions after duplicate resolution
+
+Includes:
+
+Credit card charges
+
+Direct bank withdrawals (rent, utilities, etc.)
+
+TOTAL INCOME
+
+All positive Vibrant transactions only
+
+Credit card payments:
+
+Exist only to be manually removed if redundant
+
+Otherwise ignored for income
+
+3. Refunds
+
+Refunds (positive amounts on cards):
+
+Treated as income
+
+No attempt to offset categories
+
+Simple, robust, no double-counting headaches
+
+4. Monthly Logic
+
+Months are calendar-based.
+
+Most recent month:
+
+Included in current-month utilization
+
+Excluded from averages if incomplete
+
+Averages computed only from full past months
+
+5. Categories & Persistence
+
+Category mappings are:
+
+Stored to disk (JSON)
+
+Automatically reused on future runs
+
+Manual overrides and keyword rules persist
+
+Script only prompts when:
+
+A new category appears
+
+A new merchant keyword is unseen
+
+6. Budget Construction Logic
+
+Compute:
+
+Avg monthly income (past full months)
+
+Avg monthly spending per category
+
+Budget = historical averages scaled to income
+
+If income < spending:
+
+Categories reduced proportionally
+
+Food & Drink reduced first
+
+Groceries not protected
+
+If still negative:
+
+Deficit shown clearly (red, explicit)
+
+7. Manual Anomaly Handling
+
+Ability to mark transactions as:
+
+“Ignore for budgeting”
+
+Implemented, but not over-engineered in v1
+
+8. Output & Persistence
+
+Every run saves:
+
+Cleaned transactions
+
+Monthly summaries
+
+Budget targets
+
+Stored in:
+
+budget_data/
+  ├── runs/
+  │   ├── 2025-01-12_18-40/
+  │   └── ...
+  ├── category_map.json
+  ├── merchant_rules.json
+  └── overrides.json
+
+9. UX Flow
+
+Wizard-style
+
+Upload files
+
+Resolve duplicates (popups)
+
+Review totals
+
+Monthly tabs
+
+Current month utilization + “$ left to spend”
+
+GUI via tkinter (fast, built-in, good enough).
+
+⚠️ Last 4 Questions Before Coding (These Are the Final Ones)
+
+These are small but important.
+
+A. Currency Precision
+
+Do you want:
+
+Strict float arithmetic (simpler)
+
+Or Decimal for accounting-grade precision?
+
+(I recommend Decimal, but it’s slightly more verbose.)
+
+B. File Types
+
+Are your Chase / Discover statements:
+
+CSV only?
+
+Or sometimes Excel (.xlsx)?
+
+I can support both easily — just need to know.
+
+C. Timezone / Date Parsing
+
+Are all dates:
+
+US format (MM/DD/YYYY)?
+
+Or mixed formats across banks?
+
+If mixed, I’ll auto-detect.
+
+D. Script Invocation
+
+Do you want to run it as:
+
+python budget.py
+
+
+or installable as:
+
+budget
+
+
+(via a virtualenv + entrypoint)
+
+FOURTH PROMPT (CHAT GPT):
+A. lets do Decimal
+B. CSV Only
+C. All US FORMAT MM/DD/YYYY
+D. Run as budget_script.py for now
+
+FOURTH RESPONSE (CHAT GPT)
+Final Locked Decisions (No More Questions)
+
+Accounting precision: Decimal everywhere
+
+Input files: CSV only
+
+Dates: US format MM/DD/YYYY (no auto-detection needed)
+
+Execution:
+
+python budget_script.py
+
+🧠 Implementation Plan (So You Know What’s Coming)
+
+I’ll build this in clear, separable stages, so you can sanity-check outputs at each step and we can iterate without tearing things apart.
+
+1. Core Data Model
+
+Unified internal transaction schema:
+
+{
+    date: datetime,
+    description: str,
+    amount: Decimal,
+    category: str,
+    source: "CHASE" | "DISCOVER" | "VIBRANT",
+    ignore_for_budget: bool
+}
+
+2. File Loaders (One Per Bank)
+
+load_chase_csv()
+
+load_discover_csv()
+
+load_vibrant_csv()
+
+Each loader:
+
+Normalizes sign conventions
+
+Applies keyword/category rules
+
+Drops payments/credits where specified
+
+Outputs clean transaction objects
+
+3. Persistent Configuration
+
+Stored in budget_data/:
+
+category_map.json
+
+merchant_rules.json
+
+manual_overrides.json
+
+Loaded at startup, updated as needed.
+
+4. Duplicate Resolution Wizard (Critical Piece)
+
+Pairwise comparison only:
+
+Chase ↔ Vibrant
+
+Discover ↔ Vibrant
+
+Discover ↔ Chase
+
+Match rule:
+
+Exact Decimal amount only
+
+Tkinter popup:
+
+Shows both transactions side-by-side
+
+Buttons:
+
+KEEP LEFT
+
+KEEP RIGHT
+
+Result:
+
+Only one survives into the unified dataset
+
+This will be written carefully — this is the heart of correctness.
+
+5. Aggregation Engine
+
+Compute:
+
+Total income
+
+Total spending
+
+Net leftover
+
+Monthly breakdown:
+
+All months tabulated
+
+Current month flagged
+
+Incomplete most-recent month excluded from averages
+
+6. Budget Synthesis
+
+Historical averages (excluding current month)
+
+Budget targets derived from:
+
+Avg income
+
+Avg spending per category
+
+If income < spending:
+
+Reduce flexible categories
+
+Food & Drink reduced first
+
+Deficit clearly shown if unavoidable
+
+7. Visualization
+
+Tkinter tabs:
+
+Totals
+
+Monthly Breakdown
+
+Current Month
+
+Pie charts:
+
+Total spending
+
+Monthly spending
+
+Current month utilization
+
+Clear numeric readouts:
+
+“$ left to spend” per category
+
+Especially prominent for Food & Drink
+
+8. Persistence Per Run
+
+Each run saved to:
+
+budget_data/runs/YYYY-MM-DD_HH-MM/
+
+
+Including:
+
+Cleaned transactions
+
+Monthly summaries
+
+Final budgets
+
+🚀 Next Step
+
+In my next message, I will:
+
+Write budget_script.py
+
+Start with:
+
+Data structures
+
+CSV loaders
+
+Category mapping logic
+
+Keep the GUI minimal but functional
+
+Comment the code so it’s readable, not magic
+
+This will be version 1: honest, robust, and a little ugly — exactly what you asked for.
+
+

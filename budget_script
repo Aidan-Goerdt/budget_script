@@ -1,0 +1,29 @@
+Budget Script
+-------------
+Goal: I want to automate my budgeting so that I can keep track of expenses, income, and truly identify changes that are required.
+
+Process: My idea right now is that I will download statements from Chase, Discover, and Vibrant. I'll need to have the data cleaned and matched so that we don't have any repeat charges. Lets actually have matching amounts be presented to the user in a popup for them to select a. Keep both, b. Keep selected (omit unselected). After all the amounts are collected, lets present a simple data set of : Total Income, Total Spending, Income Spent [%], Lets also just use Chase's catagories for organization, I'll paste them but then lets also have me paste a sample of Discover's catagories so that we can conver them in the program as well that way they're consistent. I'll want to present all of theses catagories at the end and assign desired values based on percentage breakdowns for the budget. And have the option to adjust them if needed.
+
+PSUEDO-CODE
+(PYTHON)
+Have a gui pop up for the user to upload a DISCOVER File, a CHASE File (both YTD Statements, and an OPTIONAL VIBRANT file statement.
+
+For the DISCOVER file, apply the conversion of categories in cells E2:E999, put cash back used in it's own section, omit payments and credits (not useful, its just a summation) 
+
+Chase Catagories:
+Transaction Date A2:A999
+Description C2:C999
+Category D2:D999
+Type E2:E999 --> Omit Payment, only include Sale Or match with Vibrant
+Amount F2:F999 (Negative notation is correct)
+Health & Wellness
+Food & Drink
+Gas
+Travel
+Shopping
+Groceries
+Professional Services
+Gifts and Donations --> Health & Wellness for YMCA
+Personal --> Professional Services for College Transcript
+Entertainment
+Bills & Utilities --> Entertainment for Sling
