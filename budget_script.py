@@ -857,3 +857,7 @@ class BudgetTracker:
     def run(self):
         """Start the application"""
         self.root.mainloop()
+
+if __name__ == "__main__":
+    app = BudgetTracker()
+    app.run()
