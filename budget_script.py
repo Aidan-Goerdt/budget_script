@@ -331,7 +331,16 @@ class BudgetTracker:
                     category = "Income"
                 else:
                     # Negative = Spending from bank
-                    category = "Bills & Utilities"  # Default for bank spending
+                    # Check for food vendors in Venmo payments
+                    if "TACO BELL" in description.upper() or "VENMO *" in description.upper():
+                        # Try to categorize common vendors
+                        desc_upper = description.upper()
+                        if any(food in desc_upper for food in ["TACO BELL", "MCDONALD", "BURGER", "PIZZA", "RESTAURANT", "CAFE", "COFFEE"]):
+                            category = "Food & Drink"
+                        else:
+                            category = "Bills & Utilities"  # Default for bank spending
+                    else:
+                        category = "Bills & Utilities"  # Default for bank spending
                 
                 transactions.append({
                     'source': 'Vibrant',
@@ -555,7 +564,10 @@ class BudgetTracker:
         
         # Calculate averages (excluding current month)
         current_month = datetime.now().strftime('%Y-%m')
-        past_months = [k for k in monthly_data.keys() if k != current_month]
+        past_months = [k for k in sorted(monthly_data.keys()) if k != current_month]
+        
+        # Only use last 3 months for averages
+        past_months = past_months[-3:] if len(past_months) > 3 else past_months
         
         if past_months:
             avg_income = sum(monthly_data[m]['income'] for m in past_months) / len(past_months)
@@ -734,8 +746,9 @@ class BudgetTracker:
             font=("Arial", 12)
         ).pack()
         
-        # Calculate average budgets from past months
-        past_months = [k for k in monthly_data.keys() if k != current_month]
+        # Calculate average budgets from past months (last 3 months only)
+        past_months = [k for k in sorted(monthly_data.keys()) if k != current_month]
+        past_months = past_months[-3:] if len(past_months) > 3 else past_months
         
         if not past_months:
             tk.Label(
@@ -745,8 +758,85 @@ class BudgetTracker:
                 fg="orange"
             ).pack(pady=20)
         else:
-            # Calculate average income
+            # Calculate averages
             avg_income = sum(monthly_data[m]['income'] for m in past_months) / len(past_months)
+            avg_total_spending = sum(monthly_data[m]['total_spending'] for m in past_months) / len(past_months)
+            
+            # Get current month totals
+            current_income = monthly_data[current_month]['income']
+            current_total_spending = monthly_data[current_month]['total_spending']
+            
+            # Display Current vs Average
+            comparison_frame = tk.Frame(scrollable_frame, relief=tk.SUNKEN, borderwidth=2, bg="#f0f0f0")
+            comparison_frame.pack(fill=tk.X, padx=20, pady=15)
+            
+            # Current Month section
+            tk.Label(
+                comparison_frame,
+                text="CURRENT MONTH",
+                font=("Arial", 12, "bold"),
+                bg="#f0f0f0"
+            ).grid(row=0, column=0, padx=20, pady=5)
+            
+            tk.Label(
+                comparison_frame,
+                text=f"Income: ${current_income:,.2f}",
+                font=("Arial", 11),
+                fg="green",
+                bg="#f0f0f0"
+            ).grid(row=1, column=0, padx=20, pady=2)
+            
+            tk.Label(
+                comparison_frame,
+                text=f"Spending: ${current_total_spending:,.2f}",
+                font=("Arial", 11),
+                fg="red",
+                bg="#f0f0f0"
+            ).grid(row=2, column=0, padx=20, pady=2)
+            
+            current_leftover = current_income - current_total_spending
+            current_color = "green" if current_leftover >= 0 else "red"
+            tk.Label(
+                comparison_frame,
+                text=f"Leftover: ${current_leftover:,.2f}",
+                font=("Arial", 11, "bold"),
+                fg=current_color,
+                bg="#f0f0f0"
+            ).grid(row=3, column=0, padx=20, pady=5)
+            
+            # Average section
+            tk.Label(
+                comparison_frame,
+                text=f"AVERAGE (Past {len(past_months)} months)",
+                font=("Arial", 12, "bold"),
+                bg="#f0f0f0"
+            ).grid(row=0, column=1, padx=20, pady=5)
+            
+            tk.Label(
+                comparison_frame,
+                text=f"Income: ${avg_income:,.2f}",
+                font=("Arial", 11),
+                fg="green",
+                bg="#f0f0f0"
+            ).grid(row=1, column=1, padx=20, pady=2)
+            
+            tk.Label(
+                comparison_frame,
+                text=f"Spending: ${avg_total_spending:,.2f}",
+                font=("Arial", 11),
+                fg="red",
+                bg="#f0f0f0"
+            ).grid(row=2, column=1, padx=20, pady=2)
+            
+            avg_leftover = avg_income - avg_total_spending
+            avg_color = "green" if avg_leftover >= 0 else "red"
+            tk.Label(
+                comparison_frame,
+                text=f"Leftover: ${avg_leftover:,.2f}",
+                font=("Arial", 11, "bold"),
+                fg=avg_color,
+                bg="#f0f0f0"
+            ).grid(row=3, column=1, padx=20, pady=5)
             
             # Calculate average spending per category
             category_budgets = defaultdict(lambda: Decimal('0'))
@@ -760,13 +850,6 @@ class BudgetTracker:
             # Get current month actual spending and transactions
             current_spending = monthly_data[current_month]['spending']
             current_transactions = monthly_data[current_month]['transactions']
-            
-            tk.Label(
-                scrollable_frame,
-                text=f"Average Monthly Income: ${avg_income:,.2f}",
-                font=("Arial", 11),
-                fg="green"
-            ).pack(pady=5)
             
             tk.Label(
                 scrollable_frame,
