@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 """
-Budget Script v1
-Author: ChatGPT (spec-driven build)
+Budget Script v2
 
 Run:
   python budget_script.py
 
-This script:
-- Loads Chase, Discover, and Vibrant CSV statements
-- Normalizes categories and amounts
-- Lets user manually resolve duplicate transactions (amount-based)
-- Aggregates income & spending
-- Computes monthly stats, averages, and budgets
-- Persists cleaned data and configs to disk
-
-NOTE: This is intentionally readable and explicit rather than clever.
+Loads Chase, Discover, and Vibrant CSV statements, normalizes data,
+lets the user resolve duplicate transactions (amount-only matching),
+aggregates income/spending, and persists results.
 """
 
 from decimal import Decimal, getcontext
@@ -34,18 +27,6 @@ CONFIG_FILES = {
     "category_map": os.path.join(DATA_DIR, "category_map.json"),
     "merchant_rules": os.path.join(DATA_DIR, "merchant_rules.json"),
     "overrides": os.path.join(DATA_DIR, "overrides.json"),
-}
-
-CHASE_CATEGORIES = {
-    "Health & Wellness",
-    "Food & Drink",
-    "Gas",
-    "Travel",
-    "Shopping",
-    "Groceries",
-    "Professional Services",
-    "Entertainment",
-    "Bills & Utilities",
 }
 
 # ------------------ UTILS ------------------
@@ -95,11 +76,12 @@ def load_chase(path, merchant_rules):
     with open(path, newline="") as f:
         reader = csv.DictReader(f)
         for r in reader:
-            if r["Type"] == "Payment":
+            if r.get("Type") == "Payment":
                 continue
+
             amt = d(r["Amount"])
-            cat = r["Category"]
             desc = r["Description"]
+            cat = r["Category"]
 
             for key, forced_cat in merchant_rules.items():
                 if key in desc.upper():
@@ -110,7 +92,7 @@ def load_chase(path, merchant_rules):
                 desc,
                 amt,
                 cat,
-                "CHASE"
+                "CHASE",
             ))
     return txns
 
@@ -120,14 +102,12 @@ def load_discover(path, category_map, merchant_rules):
     with open(path, newline="") as f:
         reader = csv.DictReader(f)
         for r in reader:
-            cat_raw = r["Category"]
-            if cat_raw == "Payments & Credits":
+            if r.get("Category") == "Payments & Credits":
                 continue
 
             amt = d(r["Amount"]) * Decimal("-1")
             desc = r["Description"]
 
-            # Merchant override first
             cat = None
             for key, forced_cat in merchant_rules.items():
                 if key in desc.upper():
@@ -135,14 +115,14 @@ def load_discover(path, category_map, merchant_rules):
                     break
 
             if not cat:
-                cat = category_map.get(cat_raw, "Uncategorized")
+                cat = category_map.get(r["Category"], "Uncategorized")
 
             txns.append(make_txn(
-                parse_date(r["Transaction Date"]),
+                parse_date(r["Trans. Date"]),
                 desc,
                 amt,
                 cat,
-                "DISCOVER"
+                "DISCOVER",
             ))
     return txns
 
@@ -155,12 +135,13 @@ def load_vibrant(path):
             amt = d(r["Amount"])
             desc = r["Description"]
             cat = "Income" if amt > 0 else "Bills & Utilities"
+
             txns.append(make_txn(
-                parse_date(r["Transaction Date"]),
+                parse_date(r["Effective Date"]),
                 desc,
                 amt,
                 cat,
-                "VIBRANT"
+                "VIBRANT",
             ))
     return txns
 
@@ -217,7 +198,11 @@ def duplicate_popup(a, b):
 
     for lbl, txn in [("A", a), ("B", b)]:
         box = left if lbl == "A" else right
-        tk.Label(box, text=f"{txn['source']}\n{txn['date']}\n{txn['description']}\n{txn['amount']}\n{txn['category']}").pack()
+        tk.Label(
+            box,
+            text=f"{txn['source']}\n{txn['date']}\n{txn['description']}\n{txn['amount']}\n{txn['category']}",
+            justify="left",
+        ).pack()
 
     tk.Button(root, text="KEEP LEFT", command=lambda: select("A")).pack(side="left", padx=20, pady=10)
     tk.Button(root, text="KEEP RIGHT", command=lambda: select("B")).pack(side="right", padx=20, pady=10)
@@ -299,7 +284,7 @@ def main():
 
     messagebox.showinfo(
         "Summary",
-        f"TOTAL INCOME: {income}\nTOTAL SPENDING: {spending}\nNET: {income + spending}"
+        f"TOTAL INCOME: {income}\nTOTAL SPENDING: {spending}\nNET: {income + spending}",
     )
 
 
