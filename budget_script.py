@@ -18,7 +18,7 @@ class BudgetTracker:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Budget Tracker")
-        self.root.geometry("800x600")
+        self.root.geometry("1200x900")
         
         # Data storage
         self.transactions = []
@@ -204,6 +204,17 @@ class BudgetTracker:
         except:
             return Decimal("0")
     
+    def is_credit_card_payment(self, description):
+        """Check if Vibrant transaction is a credit card payment"""
+        payment_keywords = [
+            "DISCOVER DC PYMNTS",
+            "CHASE CREDIT CRD",
+            "AUTOPAY",
+            "EPAY"
+        ]
+        desc_upper = description.upper()
+        return any(keyword in desc_upper for keyword in payment_keywords)
+    
     def read_chase(self):
         """Read Chase CSV file"""
         transactions = []
@@ -310,13 +321,16 @@ class BudgetTracker:
                 description = row['Description'].strip()
                 amount = self.parse_amount(row['Amount'])
                 
+                # Skip credit card payments (they're just transfers)
+                if self.is_credit_card_payment(description):
+                    continue
+                
                 # Determine category based on amount sign and description
                 if amount > 0:
                     # Positive = Income
                     category = "Income"
                 else:
                     # Negative = Spending from bank
-                    # Try to categorize based on description
                     category = "Bills & Utilities"  # Default for bank spending
                 
                 transactions.append({
@@ -383,87 +397,6 @@ class BudgetTracker:
         dialog.wait_window()
         return result[0] or current_mapping
     
-    def find_duplicates(self, transactions):
-        """Find potential duplicate transactions by amount"""
-        amount_groups = defaultdict(list)
-        
-        for i, trans in enumerate(transactions):
-            # Use absolute value for matching
-            abs_amount = abs(trans['amount'])
-            amount_groups[abs_amount].append((i, trans))
-        
-        # Find groups with multiple transactions
-        duplicate_groups = []
-        for amount, trans_list in amount_groups.items():
-            if len(trans_list) > 1:
-                duplicate_groups.append(trans_list)
-        
-        return duplicate_groups
-    
-    def resolve_duplicates(self, duplicate_groups):
-        """Show UI to resolve duplicates"""
-        indices_to_remove = set()
-        
-        total_groups = len(duplicate_groups)
-        
-        for group_num, group in enumerate(duplicate_groups, 1):
-            # Create dialog
-            dialog = tk.Toplevel(self.root)
-            dialog.title(f"Resolve Duplicates ({group_num}/{total_groups})")
-            dialog.geometry("700x400")
-            dialog.grab_set()
-            
-            tk.Label(
-                dialog,
-                text=f"Potential duplicates found (Group {group_num} of {total_groups})",
-                font=("Arial", 12, "bold")
-            ).pack(pady=10)
-            
-            tk.Label(
-                dialog,
-                text="Check transactions that are DUPLICATES (they will be removed):",
-                font=("Arial", 10)
-            ).pack(pady=5)
-            
-            # Create frame for transactions
-            trans_frame = tk.Frame(dialog)
-            trans_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
-            
-            checkboxes = []
-            
-            for idx, (orig_idx, trans) in enumerate(group):
-                frame = tk.LabelFrame(trans_frame, text=f"{trans['source']}", padx=10, pady=5)
-                frame.pack(fill=tk.X, pady=5)
-                
-                var = tk.BooleanVar(value=False)
-                cb = tk.Checkbutton(frame, variable=var)
-                cb.pack(side=tk.LEFT)
-                
-                info_text = f"Date: {trans['date'].strftime('%m/%d/%Y')} | Amount: ${trans['amount']:.2f} | {trans['description'][:50]}"
-                tk.Label(frame, text=info_text, anchor=tk.W).pack(side=tk.LEFT, padx=10)
-                
-                checkboxes.append((var, orig_idx))
-            
-            def save_selections():
-                for var, orig_idx in checkboxes:
-                    if var.get():
-                        indices_to_remove.add(orig_idx)
-                dialog.destroy()
-            
-            tk.Button(
-                dialog,
-                text="Confirm",
-                command=save_selections,
-                bg="green",
-                fg="white",
-                width=20,
-                height=2
-            ).pack(pady=10)
-            
-            dialog.wait_window()
-        
-        return indices_to_remove
-    
     def process_budget(self):
         """Main processing function"""
         try:
@@ -477,17 +410,6 @@ class BudgetTracker:
             
             # Combine all transactions
             all_transactions = chase_trans + discover_trans + vibrant_trans
-            
-            # Find and resolve duplicates
-            duplicate_groups = self.find_duplicates(all_transactions)
-            
-            if duplicate_groups:
-                indices_to_remove = self.resolve_duplicates(duplicate_groups)
-                # Remove duplicates
-                all_transactions = [
-                    trans for i, trans in enumerate(all_transactions)
-                    if i not in indices_to_remove
-                ]
             
             self.transactions = sorted(all_transactions, key=lambda x: x['date'])
             
@@ -528,11 +450,13 @@ class BudgetTracker:
         monthly_data = defaultdict(lambda: {
             'income': Decimal('0'),
             'spending': defaultdict(lambda: Decimal('0')),
-            'total_spending': Decimal('0')
+            'total_spending': Decimal('0'),
+            'transactions': []
         })
         
         for trans in self.transactions:
             month_key = trans['date'].strftime('%Y-%m')
+            monthly_data[month_key]['transactions'].append(trans)
             
             if trans['category'] == 'Income' or trans['amount'] > 0:
                 monthly_data[month_key]['income'] += trans['amount']
@@ -548,7 +472,7 @@ class BudgetTracker:
         """Display results in new window"""
         results_window = tk.Toplevel(self.root)
         results_window.title("Budget Analysis")
-        results_window.geometry("1000x700")
+        results_window.geometry("1200x900")
         
         # Create notebook for tabs
         notebook = ttk.Notebook(results_window)
@@ -740,6 +664,46 @@ class BudgetTracker:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
     
+    def show_category_transactions(self, category, transactions):
+        """Show transactions for a specific category in a popup"""
+        popup = tk.Toplevel(self.root)
+        popup.title(f"{category} - Transactions")
+        popup.geometry("900x600")
+        
+        # Create frame with scrollbar
+        frame = tk.Frame(popup)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Create Treeview (table)
+        tree = ttk.Treeview(frame, columns=("Date", "Source", "Description", "Amount"), show="headings")
+        
+        # Define columns
+        tree.heading("Date", text="Date")
+        tree.heading("Source", text="Source")
+        tree.heading("Description", text="Description")
+        tree.heading("Amount", text="Amount")
+        
+        tree.column("Date", width=100)
+        tree.column("Source", width=80)
+        tree.column("Description", width=500)
+        tree.column("Amount", width=100)
+        
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        
+        # Add transactions
+        for trans in transactions:
+            tree.insert("", "end", values=(
+                trans['date'].strftime('%m/%d/%Y'),
+                trans['source'],
+                trans['description'],
+                f"${trans['amount']:.2f}"
+            ))
+        
+        tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+    
     def create_budget_tracking_tab(self, notebook, current_month, monthly_data, run_dir):
         """Create budget tracking tab for current month"""
         tab = tk.Frame(notebook)
@@ -793,8 +757,9 @@ class BudgetTracker:
             for cat in category_budgets:
                 category_budgets[cat] /= len(past_months)
             
-            # Get current month actual spending
+            # Get current month actual spending and transactions
             current_spending = monthly_data[current_month]['spending']
+            current_transactions = monthly_data[current_month]['transactions']
             
             tk.Label(
                 scrollable_frame,
@@ -817,8 +782,17 @@ class BudgetTracker:
                 actual = current_spending.get(category, Decimal('0'))
                 remaining = budget - actual
                 
-                frame = tk.Frame(scrollable_frame, relief=tk.RIDGE, borderwidth=2)
+                # Get transactions for this category
+                cat_transactions = [t for t in current_transactions if t['category'] == category and t['amount'] < 0]
+                
+                frame = tk.Frame(scrollable_frame, relief=tk.RIDGE, borderwidth=2, cursor="hand2")
                 frame.pack(fill=tk.X, padx=20, pady=5)
+                
+                # Make frame clickable
+                def make_click_handler(cat, trans):
+                    return lambda e: self.show_category_transactions(cat, trans)
+                
+                frame.bind("<Button-1>", make_click_handler(category, cat_transactions))
                 
                 tk.Label(
                     frame,
@@ -839,6 +813,10 @@ class BudgetTracker:
                     font=("Arial", 10, "bold"),
                     fg=remaining_color
                 ).pack(anchor=tk.W, padx=10, pady=2)
+                
+                # Bind all children too
+                for child in frame.winfo_children():
+                    child.bind("<Button-1>", make_click_handler(category, cat_transactions))
             
             # Save budget data
             budget_data = {
